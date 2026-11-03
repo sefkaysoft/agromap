@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uzman Konsensüsü ve Akıllı Reçete Oylama Paneli</title>
+    <!-- Bootstrap 5 CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .image-container {
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            min-height: 280px;
+            max-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+        #vakaGorseli {
+            transition: transform 0.1s ease-out;
+            cursor: grab;
+            max-width: 100%;
+            max-height: 380px;
+            object-fit: contain;
+            transform-origin: center center;
+        }
+        #vakaGorseli:active {
+            cursor: grabbing;
+        }
+        .zoom-controls {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 5px;
+            border-radius: 5px;
+            z-index: 10;
+        }
+        .zoom-controls button {
+            color: white;
+            background: transparent;
+            border: none;
+            font-size: 1.2rem;
+            padding: 0 8px;
+        }
+        .zoom-controls button:hover {
+            color: #ffc107;
+        }
+        /* Mobil uyumluluk için ek esneklik */
+        @media (max-width: 768px) {
+            .container {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+            .card-body {
+                padding: 1rem !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+    <div class="container py-3 py-md-5">
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-10">
+                
+                <!-- 1. ADIM: UZMAN GİRİŞ Ekrani ve Kapsamlı Bilimsel Açıklama -->
+                <div id="girisEkrani" class="card shadow">
+                    <div class="card-header bg-success text-white">
+                        <h4 class="mb-0 fs-5 fs-md-4">🌿 AgroMap AI - Uzman Giriş Paneli</h4>
+                    </div>
+                    <div class="card-body p-3 p-md-4">
+                        <!-- Bilimsel Proje ve Kapsam Açıklaması -->
+                        <div class="alert alert-success border-success mb-4" role="alert">
+                            <h5 class="alert-heading fw-bold fs-6 fs-md-5">🌱 Proje Hakkında ve Bilimsel Amaç</h5>
+                            <hr>
+                            <p class="mb-2 small small-md-base">
+                                <strong>AgroMap AI</strong>, tarımsal üretimde yapay zekâ destekli erken teşhis, WebGIS tabanlı konumsal analizler, tank dozaj optimizasyonu, organik reçete yönetimi, pH dengeleme ve akıllı tank karışım senaryolarını bir arada sunan yenilikçi bir karar destek ve araştırma platformudur.
+                            </p>
+                            <p class="mb-2 small small-md-base">
+                                <strong>Neden Yapılıyor?</strong> Saha çalışmalarında bitki hastalıklarının ve zararlılarının milisaniyeler içinde doğru tespit edilmesi; doğru ilaçlama, hassas dozaj hesaplamaları ve çevrimdışı (offline) mobil kullanım açısından kritik öneme sahiptir. Bu süreçlerin güvenilir çalışabilmesi için uzman görüşlerinin ortak bir konsensüsle doğrulanması gerekmektedir.
+                            </p>
+                            <p class="mb-0 small small-md-base">
+                                <strong>Bilimsel Yöntem ve Test:</strong> Bu panelde uzmanlar tarafından oylanan ve konsensüs (en az %80 uzlaşı) sağlayan numuneler; <em>Transfer Learning (Aktarımlı Öğrenme)</em> ve <em>Fine-Tuning (İnce Ayar)</em> teknikleriyle <strong>MobileNetV2</strong> mimarisine entegre edilmektedir. Elde edilen bu yüksek doğruluklu uzman veri seti, aynı zamanda platformumuzda geliştirilen WebGIS tabanlı teşhis ve karar destek yazılımlarının doğruluğunu test etmek ve kalibre etmek amacıyla temel referans veri havuzu olarak kullanılacaktır.
+                            </p>
+                        </div>
+
+                        <p class="text-muted small small-md-base">Lütfen oylamaya başlamadan önce adınızı seçiniz. Sistem kaldığınız numuneden otomatik olarak devam edecektir.</p>
+                        <div class="mb-3">
+                            <label for="uzmanSec" class="form-label fw-bold">Oylama Yapan Uzman:</label>
+                            <select id="uzmanSec" class="form-select">
+                                <option value="">-- Uzman Seçiniz --</option>
+                                <option value="Dr. Ahmet Yılmaz">Dr. Ahmet Yılmaz (Fitopatolog)</option>
+                                <option value="Doç. Dr. Ayşe Demir">Doç. Dr. Ayşe Demir (Entomolog)</option>
+                                <option value="Prof. Dr. Mehmet Kaya">Prof. Dr. Mehmet Kaya (Bahçe Bitkileri)</option>
+                                <option value="Dr. Zeynep Çelik">Dr. Zeynep Çelik (Bitki Koruma)</option>
+                                <option value="Uzm. Can Şahin">Uzm. Can Şahin (Ziraat Mühendisi)</option>
+                            </select>
+                        </div>
+                        <button type="button" onclick="oylayaBasla()" class="btn btn-success w-100 py-2 fw-bold" id="baslaBtn">Oylamaya Başla</button>
+                    </div>
+                </div>
+
+                <!-- 2. ADIM: OYLAMA EKRANI (Başlangıçta Gizli) -->
+                <div id="oylamaEkrani" class="card shadow d-none">
+                    <div class="card-header bg-success text-white d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+                        <h4 class="mb-0 fs-5 fs-md-4">🌿 Uzman Konsensüsü ve Reçete Modülü</h4>
+                        <span id="sayacBadge" class="badge bg-light text-dark fs-6">Fotoğraf: 1 / X</span>
+                    </div>
+                    <div class="card-body p-3 p-md-4">
+                        
+                        <div class="row mb-4">
+                            <!-- Görsel Alanı ve Zoom Araçları -->
+                            <div class="col-12 col-md-6 mb-3 mb-md-0">
+                                <h6 class="text-muted mb-2">İncelenen Saha Görseli <small class="text-primary" id="dosyaAdiText"></small></h6>
+                                <div class="image-container border shadow-sm" id="imageContainer">
+                                    <img id="vakaGorseli" src="" alt="Hastalık Görseli">
+                                    <div class="zoom-controls">
+                                        <button type="button" onclick="zoomIn()" title="Yakınlaştır">+</button>
+                                        <button type="button" onclick="zoomOut()" title="Uzaklaştır">-</button>
+                                        <button type="button" onclick="zoomReset()" title="Sıfırla">⟲</button>
+                                    </div>
+                                </div>
+                                <div class="text-center mt-2 text-muted small">Görseli büyüttükten sonra mouse ile basıp sürükleyerek gezinebilirsiniz.</div>
+                            </div>
+
+                            <!-- Patojen Seçim Alanı -->
+                            <div class="col-12 col-md-6 d-flex flex-column">
+                                <h6 class="text-muted mb-2">Aktif Uzman: <strong id="aktifUzmanAdi" class="text-success"></strong></h6>
+                                <label class="form-label fw-bold text-success mb-1">Patojen / Zararlı / Durum Seçimi:</label>
+                                
+                                <div class="border rounded p-2 bg-white flex-grow-1" style="height: 350px; max-height: 350px; overflow-y: auto;" id="patojenListesiDiv">
+                                    
+                                    <div class="form-check mb-1"><input class="form-check-input patojen-radio" type="radio" name="patojenSecim" id="p1" value="Karaleke / Karakutak (Venturia pirina)" onchange="hastalikDegisti()"><label class="form-check-label" for="p1">🦠 Karaleke / Karakutak (<i>Venturia pirina</i>)</label></div>
+                                    <div class="form-check mb-1"><input class="form-check-input patojen-radio" type="radio" name="patojenSecim" id="p2" value="Psyllas (Cacopsylla pyri) / Psila" onchange="hastalikDegisti()"><label class="form-check-label" for="p2">🐛 Psyllas (<i>Cacopsylla pyri</i>) / Psila</label></div>
+                                    <div class="form-check mb-1"><input class="form-check-input patojen-radio" type="radio" name="patojenSecim" id="p3" value="Ateş Yanıklığı (Erwinia amylovora)" onchange="hastalikDegisti()"><label class="form-check-label" for="p3">🦠 Ateş Yanıklığı (<i>Erwinia amylovora</i>)</label></div>
+                                    <div class="form-check mb-1"><input class="form-check-input patojen-radio" type="radio" name="patojenSecim" id="p4" value="Şeftali Yaprak Kıvırcıklığı (Taphrina deformans)" onchange="hastalikDegisti()"><label class="form-check-label" for="p4">🦠 Şeftali Yaprak Kıvırcıklığı (<i>Taphrina deformans</i>)</label></div>
+                                    <div class="form-check mb-1"><input class="form-check-input patojen-radio" type="radio" name="patojenSecim" id="p5" value="Yaprak Biti (Myzus persicae)" onchange="hastalikDegisti()"><label class="form-check-label" for="p5">🐛 Yaprak Biti (<i>Myzus persicae</i>)</label></div>
+                                    <div class="form-check mb-1"><input class="form-check-input patojen-radio" type="radio" name="patojenSecim" id="p6" value="Monilya (Şeftali - Ayva - Elma - Kayısı vb.) (Monilinia laxa)" onchange="hastalikDegisti()"><label class="form-check-label" for="p6">🦠 Monilya (Şeftali - Ayva - Elma - Kayısı vb.) (<i>Monilinia laxa</i>)</label></div>
+                                    <div class="form-check mb-1"><input class="form-check-input patojen-radio" type="radio" name="patojenSecim" id="p7" value="İç Kurdu (Cydia pomonella)" onchange="hastalikDegisti()"><label class="form-check-label" for="p7">🐛 İç Kurdu (<i>Cydia pomonella</i>)</label></div>
+                                    <div class="form-check mb-1"><input class="form-check-input patojen-radio" type="radio" name="patojenSecim" id="p8" value="Kırmızı Örümcek (İki noktalı kırmızı örümcek) (Tetranychus urticae)" onchange="hastalikDegisti()"><label class="form-check-label" for="p8">🐛 Kırmızı Örümcek (İki noktalı kırmızı örümcek) (<i>Tetranychus urticae</i>)</label></div>
+                                    <div class="form-check mb-1"><input class="form-check-input patojen-radio" type="radio" name="patojenSecim" id="p9" value="Yalancı Mildiyö (Pseudoperonospora cubensis)" onchange="hastalikDegisti()"><label class="form-check-label" for="p9">🦠 Yalancı Mildiyö (<i>Pseudoperonospora cubensis</i>)</label></div>
+                                    <div class="form-check mb-1"><input class="form-check-input patojen-radio" type="radio" name="patojenSecim" id="p10" value="Sümüklü Böcekler ve Salyangozlar (Deroceras reticulatum)" onchange="hastalikDegisti()"><label class="form-check-label" for="p10">🐛 Sümüklü Böcekler ve Salyangozlar (<i>Deroceras reticulatum</i>)</label></div>
+                                    <div class="form-check mb-1"><input class="form-check-input patojen-radio" type="radio" name="patojenSecim" id="p11" value="Sclerotinia Beyaz Çürüklüğü / Dip Çürüklüğü (Sclerotinia sclerotiorum)" onchange="hastalikDegisti()"><label class="form-check-label" for="p11">🦠 Sclerotinia Beyaz Çürüklüğü / Dip Çürüklüğü (<i>Sclerotinia sclerotiorum</i>)</label></div>
+                                    <div class="form-check mb-1"><input class="form-check-input patojen-radio" type="radio" name="patojenSecim" id="p12" value="Marul Mildiyösü (Bremia lactucae)" onchange="hastalikDegisti()"><label class="form-check-label" for="p12">🦠 Marul Mildiyösü (<i>Bremia lactucae</i>)</label></div>
+                                    <div class="form-check mb-1"><input class="form-check-input patojen-radio" type="radio" name="patojenSecim" id="p13" value="Sağlıklı Numune örneği" onchange="hastalikDegisti()"><label class="form-check-label text-success fw-bold" for="p13">🍃 Sağlıklı Numune örneği</label></div>
+                                    
+                                    <!-- Diğeri ve Metin Kutusu -->
+                                    <div class="form-check mb-0 mt-2 d-flex align-items-center">
+                                        <input class="form-check-input patojen-radio me-2" type="radio" name="patojenSecim" id="p14" value="Diğeri" onchange="hastalikDegisti()">
+                                        <label class="form-check-label text-danger fw-bold me-2" for="p14">⚙️ Diğeri:</label>
+                                        <input type="text" id="digerMetinInput" class="form-control form-control-sm" placeholder="Diğer hastalık/zararlı yazınız..." disabled oninput="digerYazildi()">
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- İlaç Önerisi Alanı -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-success">Piyasada Bulunan İlaç / Etken Madde Önerisi (Bursa/Gürsu Bölgesi): <span id="ilacZorunluYildiz" class="text-danger">*</span></label>
+                            <select id="ilacSelect" class="form-select mb-2" onchange="ilacSecimDegisti()">
+                                <option value="">-- Bölgede En Çok Tercih Edilen İlaç / Etken Madde Seçiniz --</option>
+                                <option value="Difenoconazole 250 g/l">Difenoconazole 250 g/l</option>
+                                <option value="Captan %80 WDG">Captan %80 WDG</option>
+                                <option value="Dodine %65 WP">Dodine %65 WP</option>
+                                <option value="Abamectin 18 g/l">Abamectin 18 g/l</option>
+                                <option value="Acetamiprid %20 SP">Acetamiprid %20 SP</option>
+                                <option value="Spirodiclofen 240 g/l">Spirodiclofen 240 g/l</option>
+                                <option value="Bakır Hidroksit (Copper Hydroxide)">Bakır Hidroksit (Copper Hydroxide)</option>
+                                <option value="Fosetyl-Al %80 WP">Fosetyl-Al %80 WP</option>
+                                <option value="Kasugamycin + Copper">Kasugamycin + Copper</option>
+                                <option value="Dithianon %70 WG">Dithianon %70 WG</option>
+                                <option value="Flonicamid %50 WG">Flonicamid %50 WG</option>
+                                <option value="Cyprodinil + Fludioxonil">Cyprodinil + Fludioxonil</option>
+                                <option value="Boscalid + Pyraclostrobin">Boscalid + Pyraclostrobin</option>
+                                <option value="Chlorantraniliprole 200 g/l">Chlorantraniliprole 200 g/l</option>
+                                <option value="Emamectin Benzoate 50 g/kg">Emamectin Benzoate 50 g/kg</option>
+                                <option value="Bifenazate 240 g/l">Bifenazate 240 g/l</option>
+                                <option value="Cymoxanil + Mancozeb">Cymoxanil + Mancozeb</option>
+                                <option value="Metalaxyl-M + Mancozeb">Metalaxyl-M + Mancozeb</option>
+                                <option value="Metaldehyde %5 Yem">Metaldehyde %5 Yem</option>
+                                <option value="Propamocarb hydrochloride">Propamocarb hydrochloride</option>
+                                <option value="Diğer">Diğer (Listede Yoksa Kendiniz Yazınız)</option>
+                            </select>
+                            <input type="text" id="ilacDigerInput" class="form-control" placeholder="Listede olmayan ilacı / etken maddeyi buraya yazınız..." disabled oninput="ilacDigerYazildi()">
+                            <!-- Gizli input ile mevcut backend ve JS kod uyumluluğu tam korunur -->
+                            <input type="hidden" id="ilacOnerisi" value="">
+                            <div class="invalid-feedback" id="ilacHataMsg">İlaç önerisi seçmeden veya yazmadan sonraki aşamaya geçemezsiniz!</div>
+                        </div>
+
+                        <!-- Navigasyon Butonları -->
+                        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-stretch align-items-sm-center gap-2">
+                            <button type="button" id="oncekiBtn" onclick="oncekiGorsel()" class="btn btn-secondary px-4" disabled>Önceki</button>
+                            <span id="kayitDurum" class="text-muted small text-center"></span>
+                            <button type="button" id="sonrakiBtn" onclick="sonrakiGorsel()" class="btn btn-success px-4 fw-bold">Sonraki Görsel</button>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- 3. ADIM: BİTİŞ EKRANI (Başlangıçta Gizli) -->
+                <div id="bitisEkrani" class="card shadow d-none">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">🎉 Oylama Tamamlandı</h4>
+                    </div>
+                    <div class="card-body text-center p-4 p-md-5">
+                        <h5 id="bitisMesajText">Tüm görseller başarıyla oylandı ve Google Sheets tablosuna kaydedildi.</h5>
+                        <p class="text-muted">Katkınız için teşekkür ederiz.</p>
+                        <button type="button" onclick="location.reload()" class="btn btn-outline-primary mt-3">Yeni Oturum Başlat</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Uygulama Mantığı -->
+    <script>
+        const scriptURL = "https://script.google.com/macros/s/AKfycbwUZ9N5uRyt5y6_klBlGZGwhxupNNS7N4ZqXRZPEKXS00Vh1Tg5Oo3IhwpLcUQHrfA76Q/exec";
+
+        let toplamGorselSayisi = 0; 
+        let aktifSayi = 1; 
+        let aktifUzantıIndex = 0;
+        const olasiUzantilar = [".jpg", ".jpeg", ".png", ".webp", ".avif", ".JPG", ".JPEG", ".PNG", ".WEBP", ".AVIF"];
+
+        let secilenUzman = "";
+        let hastalikSonIlaclar = {}; 
+        let zoomLevel = 1;
+        let panX = 0;
+        let panY = 0;
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+
+        const imgElement = document.getElementById("vakaGorseli");
+
+        imgElement.addEventListener('mousedown', (e) => {
+            if (zoomLevel > 1) {
+                isDragging = true;
+                startX = e.clientX - panX;
+                startY = e.clientY - panY;
+                imgElement.style.cursor = 'grabbing';
+                e.preventDefault();
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            panX = e.clientX - startX;
+            panY = e.clientY - startY;
+            uygulaZoom();
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+            if (zoomLevel > 1) {
+                imgElement.style.cursor = 'grab';
+            } else {
+                imgElement.style.cursor = 'default';
+            }
+        });
+
+        // Mobil dokunmatik ekranlar (Touch) için kaydırma desteği
+        imgElement.addEventListener('touchstart', (e) => {
+            if (zoomLevel > 1 && e.touches.length === 1) {
+                isDragging = true;
+                startX = e.touches[0].clientX - panX;
+                startY = e.touches[0].clientY - panY;
+            }
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!isDragging || e.touches.length !== 1) return;
+            panX = e.touches[0].clientX - startX;
+            panY = e.touches[0].clientY - startY;
+            uygulaZoom();
+        });
+
+        window.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+
+        function oylayaBasla() {
+            const select = document.getElementById("uzmanSec");
+            if (!select.value) {
+                alert("Lütfen oylamaya başlamadan önce uzman adını seçiniz!");
+                return;
+            }
+            secilenUzman = select.value;
+            document.getElementById("aktifUzmanAdi").innerText = secilenUzman;
+
+            let baslaBtn = document.getElementById("baslaBtn");
+            baslaBtn.innerText = "Yükleniyor ve Kontrol Ediliyor...";
+            baslaBtn.disabled = true;
+
+            // Önce toplam görsel sayısını bul
+            toplamGorselSayisiniBul(() => {
+                if (toplamGorselSayisi === 0) {
+                    alert("Dikkat: 'img' klasöründe hiç görsel bulunamadı!");
+                    baslaBtn.innerText = "Oylamaya Başla";
+                    baslaBtn.disabled = false;
+                    return;
+                }
+
+                // Google Sheets'ten bu uzmanın daha önce verdiği oyları çek
+                fetch(scriptURL)
+                    .then(response => response.json())
+                    .then(rows => {
+                        let oylananNumuneler = [];
+                        rows.forEach(row => {
+                            let id = String(row.gorselId || row.GorselId || row['Görsel ID'] || row['GörselId'] || "").trim();
+                            let uzman = String(row.uzmanAdi || row.UzmanAdi || row['Uzman Adı'] || row['UzmanAdi'] || "").trim();
+                            if (uzman === secilenUzman && id) {
+                                oylananNumuneler.push(parseInt(id));
+                            }
+                        });
+
+                        // Uzmanın henüz oylamadığı ilk numuneyi bul
+                        let baslangicNumarasi = 1;
+                        for (let i = 1; i <= toplamGorselSayisi; i++) {
+                            if (!oylananNumuneler.includes(i)) {
+                                baslangicNumarasi = i;
+                                break;
+                            }
+                            if (i === toplamGorselSayisi && oylananNumuneler.includes(i)) {
+                                baslangicNumarasi = toplamGorselSayisi + 1;
+                            }
+                        }
+
+                        document.getElementById("girisEkrani").classList.add("d-none");
+
+                        if (baslangicNumarasi > toplamGorselSayisi) {
+                            // Tüm görseller zaten oylanmışsa
+                            document.getElementById("bitisEkrani").classList.remove("d-none");
+                            document.getElementById("bitisMesajText").innerText = "Tüm görselleri daha önce oyladınız. Katkınız için teşekkür ederiz.";
+                        } else {
+                            document.getElementById("oylamaEkrani").classList.remove("d-none");
+                            aktifSayi = baslangicNumarasi;
+                            aktifUzantıIndex = 0;
+                            gorselYukle();
+                        }
+                    })
+                    .catch(error => {
+                        console.warn("Geçmiş oylar alınamadı, 1. görselden başlanıyor:", error);
+                        document.getElementById("girisEkrani").classList.add("d-none");
+                        document.getElementById("oylamaEkrani").classList.remove("d-none");
+                        aktifSayi = 1;
+                        aktifUzantıIndex = 0;
+                        gorselYukle();
+                    });
+            });
+        }
+
+        function toplamGorselSayisiniBul(callback) {
+            function sonrakiSayiyiTestEt(n) {
+                let testUzantıIdx = 0;
+                function uzantiDene() {
+                    if (testUzantıIdx >= olasiUzantilar.length) {
+                        toplamGorselSayisi = n - 1;
+                        callback();
+                        return;
+                    }
+                    let testImg = new Image();
+                    testImg.onload = function() {
+                        sonrakiSayiyiTestEt(n + 1);
+                    };
+                    testImg.onerror = function() {
+                        testUzantıIdx++;
+                        uzantiDene();
+                    };
+                    testImg.src = `img/${n}${olasiUzantilar[testUzantıIdx]}`;
+                }
+                uzantiDene();
+            }
+            sonrakiSayiyiTestEt(1);
+        }
+
+        function gorselYukle() {
+            let formatliNumara = String(aktifSayi).padStart(3, '0');
+            document.getElementById("sayacBadge").innerText = `Fotoğraf: ${aktifSayi} / ${toplamGorselSayisi}`;
+            document.getElementById("dosyaAdiText").innerText = `(numune #${formatliNumara})`;
+
+            document.querySelectorAll('input[name="patojenSecim"]').forEach(el => el.checked = false);
+            document.getElementById("digerMetinInput").value = "";
+            document.getElementById("digerMetinInput").disabled = true;
+            
+            document.getElementById("ilacSelect").value = "";
+            document.getElementById("ilacSelect").disabled = false;
+            document.getElementById("ilacDigerInput").value = "";
+            document.getElementById("ilacDigerInput").disabled = true;
+            document.getElementById("ilacOnerisi").value = "";
+            document.getElementById("ilacOnerisi").classList.remove("is-invalid");
+            document.getElementById("kayitDurum").innerText = "";
+
+            denemeUzantisiYukle();
+
+            document.getElementById("oncekiBtn").disabled = (aktifSayi === 1);
+            if (aktifSayi === toplamGorselSayisi) {
+                document.getElementById("sonrakiBtn").innerText = "Oylamayı Tamamla";
+            } else {
+                document.getElementById("sonrakiBtn").innerText = "Sonraki Görsel";
+            }
+        }
+
+        function denemeUzantisiYukle() {
+            if (aktifUzantıIndex >= olasiUzantilar.length) {
+                alert(`Dikkat: img klasöründe '${aktifSayi}' numaralı görsel yüklenemedi!`);
+                return;
+            }
+
+            let uzanti = olasiUzantilar[aktifUzantıIndex];
+            let testYolu = `img/${aktifSayi}${uzanti}`;
+
+            let img = document.getElementById("vakaGorseli");
+            
+            img.onload = function() {
+                zoomReset();
+            };
+
+            img.onerror = function() {
+                aktifUzantıIndex++;
+                denemeUzantisiYukle();
+            };
+
+            img.src = testYolu;
+        }
+
+        function ilacSecimDegisti() {
+            let select = document.getElementById("ilacSelect");
+            let digerInput = document.getElementById("ilacDigerInput");
+            let hiddenInput = document.getElementById("ilacOnerisi");
+
+            if (select.value === "Diğer") {
+                digerInput.disabled = false;
+                digerInput.focus();
+                hiddenInput.value = digerInput.value.trim();
+            } else {
+                digerInput.disabled = true;
+                digerInput.value = "";
+                hiddenInput.value = select.value;
+            }
+            hiddenInput.classList.remove("is-invalid");
+        }
+
+        function ilacDigerYazildi() {
+            let digerInput = document.getElementById("ilacDigerInput");
+            let hiddenInput = document.getElementById("ilacOnerisi");
+            hiddenInput.value = digerInput.value.trim();
+            hiddenInput.classList.remove("is-invalid");
+        }
+
+        function hastalikDegisti() {
+            let digerRadio = document.getElementById("p14");
+            let digerInput = document.getElementById("digerMetinInput");
+            let saglikliRadio = document.getElementById("p13");
+            let ilacSelect = document.getElementById("ilacSelect");
+            let ilacDigerInput = document.getElementById("ilacDigerInput");
+            let ilacHidden = document.getElementById("ilacOnerisi");
+            let yildizSpan = document.getElementById("ilacZorunluYildiz");
+
+            if (digerRadio.checked) {
+                digerInput.disabled = false;
+                digerInput.focus();
+            } else {
+                digerInput.disabled = true;
+                digerInput.value = "";
+            }
+
+            // Sağlıklı numune seçilirse ilaç önerisi zorunluluğunu kaldır ve alanı pasifleştir/temizle
+            if (saglikliRadio.checked) {
+                ilacSelect.value = "";
+                ilacSelect.disabled = true;
+                ilacDigerInput.value = "";
+                ilacDigerInput.disabled = true;
+                ilacHidden.value = "Gerek yok (Sağlıklı Numune)";
+                yildizSpan.style.display = "none";
+                ilacHidden.classList.remove("is-invalid");
+            } else {
+                ilacSelect.disabled = false;
+                yildizSpan.style.display = "inline";
+                if (ilacHidden.value === "Gerek yok (Sağlıklı Numune)") {
+                    ilacHidden.value = "";
+                    ilacSelect.value = "";
+                }
+            }
+
+            let secilenPatojenRadio = document.querySelector('input[name="patojenSecim"]:checked');
+            if (secilenPatojenRadio && secilenPatojenRadio.value !== "Diğeri" && !saglikliRadio.checked) {
+                let patojenAdi = secilenPatojenRadio.value;
+                if (hastalikSonIlaclar[patojenAdi] && ilacHidden.value.trim() === "") {
+                    let sonIlac = hastalikSonIlaclar[patojenAdi];
+                    let optionExists = Array.from(ilacSelect.options).some(opt => opt.value === sonIlac);
+                    if (optionExists) {
+                        ilacSelect.value = sonIlac;
+                        ilacDigerInput.value = "";
+                        ilacDigerInput.disabled = true;
+                    } else {
+                        ilacSelect.value = "Diğer";
+                        ilacDigerInput.disabled = false;
+                        ilacDigerInput.value = sonIlac;
+                    }
+                    ilacHidden.value = sonIlac;
+                }
+            }
+        }
+
+        function digerYazildi() {
+            let digerInputVal = document.getElementById("digerMetinInput").value.trim();
+            document.getElementById("p14").value = digerInputVal ? "Diğeri: " + digerInputVal : "Diğeri";
+        }
+
+        function sonrakiGorsel() {
+            let secilenPatojenRadio = document.querySelector('input[name="patojenSecim"]:checked');
+            let ilacInput = document.getElementById("ilacOnerisi");
+            let saglikliRadio = document.getElementById("p13");
+
+            if (!secilenPatojenRadio) {
+                alert("Lütfen listeden bir patojen/zararlı veya durum seçiniz!");
+                return;
+            }
+
+            let patojenAdi = secilenPatojenRadio.value;
+            if (secilenPatojenRadio.id === "p14") {
+                let digerText = document.getElementById("digerMetinInput").value.trim();
+                if (!digerText) {
+                    alert("Lütfen 'Diğeri' seçeneği için açıklama yazınız!");
+                    document.getElementById("digerMetinInput").focus();
+                    return;
+                }
+                patojenAdi = "Diğeri: " + digerText;
+            }
+
+            // Sağlıklı numune değilse ilaç önerisi zorunludur
+            if (!saglikliRadio.checked && !ilacInput.value.trim()) {
+                ilacInput.classList.add("is-invalid");
+                alert("İlaç önerisi seçmeden veya yazmadan sonraki aşamaya geçemezsiniz!");
+                return;
+            } else {
+                ilacInput.classList.remove("is-invalid");
+            }
+
+            let safGorselId = aktifSayi.toString(); 
+            let ilacOnerisiMetni = saglikliRadio.checked ? "Yok (Sağlıklı Numune)" : ilacInput.value.trim();
+
+            if (secilenPatojenRadio.id !== "p14" && !saglikliRadio.checked) {
+                hastalikSonIlaclar[patojenAdi] = ilacOnerisiMetni;
+            }
+
+            let veri = {
+                gorselId: safGorselId,
+                uzmanAdi: secilenUzman,
+                patojen: patojenAdi,
+                ilacOnerisi: ilacOnerisiMetni
+            };
+
+            document.getElementById("kayitDurum").innerText = "Kaydediliyor...";
+            document.getElementById("sonrakiBtn").disabled = true;
+
+            fetch(scriptURL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(veri)
+            })
+            .then(() => {
+                document.getElementById("sonrakiBtn").disabled = false;
+                document.getElementById("kayitDurum").innerText = "✔ Kaydedildi";
+
+                if (aktifSayi < toplamGorselSayisi) {
+                    aktifSayi++;
+                    aktifUzantıIndex = 0; 
+                    setTimeout(gorselYukle, 400);
+                } else {
+                    document.getElementById("oylamaEkrani").classList.add("d-none");
+                    document.getElementById("bitisEkrani").classList.remove("d-none");
+                }
+            })
+            .catch(error => {
+                document.getElementById("sonrakiBtn").disabled = false;
+                document.getElementById("kayitDurum").innerText = "⚠ Kayıt hatası!";
+                console.error('Hata:', error);
+                alert("Veri kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.");
+            });
+        }
+
+        function oncekiGorsel() {
+            if (aktifSayi > 1) {
+                aktifSayi--;
+                aktifUzantıIndex = 0;
+                gorselYukle();
+            }
+        }
+
+        function zoomIn() {
+            zoomLevel += 0.3;
+            uygulaZoom();
+        }
+
+        function zoomOut() {
+            if (zoomLevel > 1) {
+                zoomLevel -= 0.3;
+                if (zoomLevel <= 1) {
+                    zoomReset();
+                } else {
+                    uygulaZoom();
+                }
+            }
+        }
+
+        function zoomReset() {
+            zoomLevel = 1;
+            panX = 0;
+            panY = 0;
+            uygulaZoom();
+        }
+
+        function uygulaZoom() {
+            let img = document.getElementById("vakaGorseli");
+            img.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
+            if (zoomLevel > 1) {
+                img.style.cursor = 'grab';
+            } else {
+                img.style.cursor = 'default';
+                panX = 0;
+                panY = 0;
+                img.style.transform = `translate(0px, 0px) scale(1)`;
+            }
+        }
+    </script>
+</body>
+</html>

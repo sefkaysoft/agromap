@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgroMap AI - Uzman Konsensüsü ve Yönetim Paneli</title>
+    <!-- Bootstrap 5 CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .image-container {
+            width: 70px;
+            height: 70px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 1px solid #dee2e6;
+            cursor: pointer;
+        }
+        .thumb-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            transition: transform 0.2s;
+        }
+        .thumb-img:hover {
+            transform: scale(1.15);
+        }
+        .badge-consensus {
+            font-size: 0.85rem;
+            padding: 6px 12px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+    <div class="container py-5">
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow bg-success text-white">
+                    <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="mb-1">📊 AgroMap AI - Konsensüs ve Yönetim Paneli</h2>
+                            <p class="mb-0 text-white-50">Google Sheets uzman oylama analizleri ve konsensüs takibi.</p>
+                        </div>
+                        <button onclick="verileriCek()" class="btn btn-light text-success fw-bold px-4">🔄 Verileri Yenile</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- İSTATİSTİK KARTLARI -->
+        <div class="row g-3 mb-4 text-center">
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 bg-white p-3">
+                    <h6 class="text-muted mb-1">Toplam Numune</h6>
+                    <h3 id="statToplam" class="fw-bold text-primary mb-0">0</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 bg-white p-3">
+                    <h6 class="text-muted mb-1">Konsensüs Oluşanlar (≥%80 Uzlaşı)</h6>
+                    <h3 id="statKonsensusOlan" class="fw-bold text-success mb-0">0</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 bg-white p-3">
+                    <h6 class="text-muted mb-1">Konsensüs Olmayanlar</h6>
+                    <h3 id="statKonsensusOlmayan" class="fw-bold text-warning mb-0">0</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 bg-white p-3">
+                    <h6 class="text-muted mb-1">Oylaması Tamamlananlar (5 Uzman)</h6>
+                    <h3 id="statTamamlanan" class="fw-bold text-info mb-0">0</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- FİLTRELEME BUTONLARI -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body py-3 d-flex flex-wrap gap-2 align-items-center">
+                <span class="fw-bold text-secondary me-2">Filtrele:</span>
+                <button onclick="filtrele('tum')" class="btn btn-dark btn-sm active" id="btnTum">Tümü</button>
+                <button onclick="filtrele('konsensus_olustu')" class="btn btn-success btn-sm" id="btnKonsensusOlan">Konsensüs Oluşanlar</button>
+                <button onclick="filtrele('konsensus_yok')" class="btn btn-warning btn-sm text-dark" id="btnKonsensusOlmayan">Konsensüs Olmayanlar</button>
+                <button onclick="filtrele('tamamlandi')" class="btn btn-info btn-sm text-white" id="btnTamamlanan">Oylaması Tamamlananlar</button>
+                <button onclick="filtrele('tamamlanmadi')" class="btn btn-secondary btn-sm" id="btnTamamlanmayan">Oylaması Tamamlanmayanlar</button>
+            </div>
+        </div>
+
+        <!-- TABLO ALANI -->
+        <div class="card shadow">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold text-secondary">📋 Numune Bazlı Konsensüs ve Uzman Yanıtları Raporu</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">Görsel</th>
+                                <th>Numune No</th>
+                                <th>Oylayan Uzman Sayısı</th>
+                                <th>Uzman Yanıt Dağılımı / Öneriler</th>
+                                <th>Konsensüs Oranı</th>
+                                <th>Konsensüs Durumu</th>
+                                <th>Oylama Durumu</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabloGovdesi">
+                            <tr><td colspan="7" class="text-center py-4 text-muted">Google Sheets'ten veriler alınıyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GÖRSEL ÖNİZLEME MODALI -->
+    <div class="modal fade" id="gorselModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content text-center p-3">
+                <h5 id="modalBaslik" class="fw-bold text-success mb-3"></h5>
+                <img id="modalBuyukImg" src="" class="img-fluid rounded shadow" alt="Büyük Görsel">
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        const scriptURL = "https://script.google.com/macros/s/AKfycbwUZ9N5uRyt5y6_klBlGZGwhxupNNS7N4ZqXRZPEKXS00Vh1Tg5Oo3IhwpLcUQHrfA76Q/exec";
+        const hedefUzmanSayisi = 5; 
+        const olasiUzantilar = [".jpg", ".jpeg", ".png", ".webp", ".avif", ".JPG", ".JPEG", ".PNG", ".WEBP", ".AVIF"];
+
+        let islenmisVeriler = [];
+        let aktifFiltre = 'tum';
+
+        document.addEventListener("DOMContentLoaded", () => {
+            verileriCek();
+        });
+
+        function verileriCek() {
+            let tbody = document.getElementById("tabloGovdesi");
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">Google Sheets'ten veriler çekiliyor...</td></tr>`;
+
+            fetch(scriptURL)
+                .then(response => response.json())
+                .then(rows => {
+                    console.log("Tablodan gelen ham veri:", rows);
+                    analizEtVeGrupla(rows);
+                })
+                .catch(error => {
+                    console.error("Veri çekme hatası:", error);
+                    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-danger">Veriler çekilirken hata oluştu. Apps Script GET dağıtımını kontrol edin.</td></tr>`;
+                });
+        }
+
+        function analizEtVeGrupla(rows) {
+            let numuneGruplari = {};
+
+            // Gelen satırları esnek anahtar eşleşmesiyle dolaşarak doğru verileri alıyoruz
+            rows.forEach(row => {
+                let id = row.gorselId || row.GorselId || row['Görsel ID'] || row['GörselId'] || row.id || "1";
+                let uzman = row.uzmanAdi || row.UzmanAdi || row['Uzman Adı'] || row['UzmanAdi'] || "Anonim Uzman";
+                let patojen = row.patojen || row.Patojen || row['Seçilen Patojen'] || row['Patojen'] || "Belirtilmemiş";
+                let ilac = row.ilacOnerisi || row.IlacOnerisi || row['İlaç ve Etken Madde Önerisi'] || row['İlaç Önerisi'] || "-";
+
+                id = String(id).trim();
+
+                if (!numuneGruplari[id]) {
+                    numuneGruplari[id] = {
+                        numuneNo: id,
+                        yanitlar: []
+                    };
+                }
+
+                // Aynı uzmanın mükerrer oylarını engelle (son oyunu baz al)
+                let mevcutUzmanIndex = numuneGruplari[id].yanitlar.findIndex(y => y.uzman === uzman);
+                if (mevcutUzmanIndex >= 0) {
+                    numuneGruplari[id].yanitlar[mevcutUzmanIndex] = { uzman: uzman, patojen: patojen, ilac: ilac };
+                } else {
+                    numuneGruplari[id].yanitlar.push({ uzman: uzman, patojen: patojen, ilac: ilac });
+                }
+            });
+
+            islenmisVeriler = [];
+            let grupKeys = Object.keys(numuneGruplari);
+            let islemBekleyenSayi = grupKeys.length;
+
+            if (islemBekleyenSayi === 0) {
+                tabloyuCiz([]);
+                istatistikleriGuncelle();
+                return;
+            }
+
+            grupKeys.forEach(id => {
+                let grup = numuneGruplari[id];
+                let toplamOy = grup.yanitlar.length;
+                let patojenSayilari = {};
+
+                grup.yanitlar.forEach(y => {
+                    patojenSayilari[y.patojen] = (patojenSayilari[y.patojen] || 0) + 1;
+                });
+
+                let maxOy = 0;
+                let kazananPatojen = "-";
+                for (let pat in patojenSayilari) {
+                    if (patojenSayilari[pat] > maxOy) {
+                        maxOy = patojenSayilari[pat];
+                        kazananPatojen = pat;
+                    }
+                }
+
+                let oran = toplamOy > 0 ? Math.round((maxOy / toplamOy) * 100) : 0;
+                
+                // Konsensüs Kuralı: 5 uzmandan en az 4 veya 5'i aynı teşhisi koymalı (%80 ve üzeri)
+                let konsensusOlustu = (toplamOy >= 4 && oran >= 80);
+                let tamamlandi = (toplamOy >= hedefUzmanSayisi);
+
+                bulGorselUzantisi(id, (bulunanYol) => {
+                    islenmisVeriler.push({
+                        numuneNo: grup.numuneNo,
+                        gorselYolu: bulunanYol,
+                        uzmanSayisi: toplamOy,
+                        yanitlar: grup.yanitlar,
+                        konsensusOrani: oran,
+                        konsensusOlustu: konsensusOlustu,
+                        tamamlandi: tamamlandi,
+                        ozetKarar: kazananPatojen,
+                        maxOy: maxOy
+                    });
+
+                    islemBekleyenSayi--;
+                    if (islemBekleyenSayi === 0) {
+                        islenmisVeriler.sort((a, b) => {
+                            let numA = parseInt(a.numuneNo) || 0;
+                            let numB = parseInt(b.numuneNo) || 0;
+                            return numA - numB;
+                        });
+                        istatistikleriGuncelle();
+                        filtrele(aktifFiltre);
+                    }
+                });
+            });
+        }
+
+        function bulGorselUzantisi(numuneId, callback) {
+            let idx = 0;
+            function dene() {
+                if (idx >= olasiUzantilar.length) {
+                    callback(`img/${numuneId}.jpg`); 
+                    return;
+                }
+                let yol = `img/${numuneId}${olasiUzantilar[idx]}`;
+                let testImg = new Image();
+                testImg.onload = function() {
+                    callback(yol);
+                };
+                testImg.onerror = function() {
+                    idx++;
+                    dene();
+                };
+                testImg.src = yol;
+            }
+            dene();
+        }
+
+        function filtrele(tur) {
+            aktifFiltre = tur;
+            document.querySelectorAll('.card-body .btn').forEach(b => b.classList.remove('active', 'btn-dark'));
+            
+            if(tur === 'tum') document.getElementById('btnTum').classList.add('btn-dark');
+            if(tur === 'konsensus_olustu') document.getElementById('btnKonsensusOlan').classList.add('active');
+            if(tur === 'konsensus_yok') document.getElementById('btnKonsensusOlmayan').classList.add('active');
+            if(tur === 'tamamlandi') document.getElementById('btnTamamlanan').classList.add('active');
+            if(tur === 'tamamlanmadi') document.getElementById('btnTamamlanmayan').classList.add('active');
+
+            let filtrelenmis = islenmisVeriler.filter(item => {
+                if (tur === 'konsensus_olustu') return item.konsensusOlustu;
+                if (tur === 'konsensus_yok') return !item.konsensusOlustu;
+                if (tur === 'tamamlandi') return item.tamamlandi;
+                if (tur === 'tamamlanmadi') return !item.tamamlandi;
+                return true;
+            });
+
+            tabloyuCiz(filtrelenmis);
+        }
+
+        function tabloyuCiz(veriListesi) {
+            let tbody = document.getElementById("tabloGovdesi");
+            tbody.innerHTML = "";
+
+            if (veriListesi.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">Tabloda gösterilecek kayıt bulunamadı.</td></tr>`;
+                return;
+            }
+
+            veriListesi.forEach(item => {
+                let detayHTML = item.yanitlar.map(y => `<div><small><strong>${y.uzman}:</strong> ${y.patojen} <br><span class="text-muted">İlaç: ${y.ilac}</span></small></div><hr class="my-1">`).join('');
+                if(item.yanitlar.length === 0) detayHTML = `<span class="text-muted small">Henüz oylama yapılmadı.</span>`;
+
+                let konsensusBadge = item.konsensusOlustu 
+                    ? `<span class="badge bg-success badge-consensus">✔ Konsensüs Oluştu<br><small>(${item.ozetKarar} - %${item.konsensusOrani})</small></span>`
+                    : `<span class="badge bg-warning text-dark badge-consensus">⚠ Konsensüs Bekleniyor / Yetersiz</span>`;
+
+                let tamamlandiBadge = item.tamamlandi
+                    ? `<span class="badge bg-info text-white">Oylama Tamamlandı (5 Uzman)</span>`
+                    : `<span class="badge bg-secondary">Devam Ediyor (${item.uzmanSayisi}/5)</span>`;
+
+                let formatliNumara = String(item.numuneNo).padStart(3, '0');
+
+                let tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td class="ps-3">
+                        <div class="image-container" onclick="buyukGorselAc('${item.gorselYolu}', 'Numune #${formatliNumara}')">
+                            <img src="${item.gorselYolu}" class="thumb-img" onerror="this.src='https://via.placeholder.com/60?text=Yok'">
+                        </div>
+                    </td>
+                    <td class="fw-bold">#${formatliNumara}</td>
+                    <td><span class="badge bg-secondary">${item.uzmanSayisi} / 5 Uzman</span></td>
+                    <td>${detayHTML}</td>
+                    <td><div class="fw-bold text-success fs-5">${item.konsensusOrani}%</div></td>
+                    <td>${konsensusBadge}</td>
+                    <td>${tamamlandiBadge}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function istatistikleriGuncelle() {
+            let toplam = islenmisVeriler.length;
+            let konsensusOlan = islenmisVeriler.filter(i => i.konsensusOlustu).length;
+            let konsensusOlmayan = toplam - konsensusOlan;
+            let tamamlanan = islenmisVeriler.filter(i => i.tamamlandi).length;
+
+            document.getElementById("statToplam").innerText = toplam;
+            document.getElementById("statKonsensusOlan").innerText = konsensusOlan;
+            document.getElementById("statKonsensusOlmayan").innerText = konsensusOlmayan;
+            document.getElementById("statTamamlanan").innerText = tamamlanan;
+        }
+
+        function buyukGorselAc(yol, baslik) {
+            document.getElementById("modalBaslik").innerText = baslik;
+            document.getElementById("modalBuyukImg").src = yol;
+            let modal = new bootstrap.Modal(document.getElementById('gorselModal'));
+            modal.show();
+        }
+    </script>
+</body>
+</html>
